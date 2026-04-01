@@ -7,32 +7,66 @@
 
 <style>
 body{font-family:"Microsoft JhengHei";background:#fafafa;margin:0;text-align:center}
-.container{max-width:900px;margin:auto;padding:20px}
+.container{max-width:1000px;margin:auto;padding:20px}
+
 .page{display:none}
 .active{display:block}
+
 .btn{padding:10px 20px;background:#2c3e50;color:#fff;border:none;margin:10px;cursor:pointer}
 
+/* 大富翁地圖 */
+.board{
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:10px;
+margin:20px 0;
+}
+
+.tile{
+border:1px solid #ccc;
+padding:20px;
+background:#fff;
+font-size:14px;
+}
+
+.active-tile{
+border:3px solid red;
+background:#ffecec;
+}
+
+/* 事件 */
 .event{border:1px solid #ccc;padding:15px;margin-top:10px}
 .log{height:120px;overflow:auto;border:1px solid #ccc;margin-top:10px;font-size:13px}
 
+/* 愚人節動畫 */
 #shooting-popup{
 display:none;
 position:fixed;
 top:0;left:0;width:100%;height:100%;
-background:rgba(0,0,0,0.9);
+background:black;
 color:red;
-font-size:60px;
+font-size:40px;
 justify-content:center;
 align-items:center;
 flex-direction:column;
 z-index:999;
+animation:shake 0.1s infinite;
 }
 
-#shooting-popup img{
-margin-top:20px;
-width:60%;
-max-width:400px;
-border:5px solid red;
+@keyframes shake{
+0%{transform:translate(2px,2px)}
+50%{transform:translate(-2px,-2px)}
+100%{transform:translate(2px,-2px)}
+}
+
+.flash-text{
+animation:blink 0.2s infinite;
+}
+
+@keyframes blink{
+0%{opacity:1}
+50%{opacity:0}
+100%{opacity:1}
 }
 </style>
 
@@ -40,9 +74,13 @@ border:5px solid red;
 
 <body>
 
+<!-- 崩壞動畫 -->
+
 <div id="shooting-popup">
-💀 噠 噠 噠 噠 💀
-<img src="https://picsum.photos/500/300">
+<div class="flash-text">⚠ 系統錯誤 ⚠</div>
+<div class="flash-text">數據清除中...</div>
+<div class="flash-text">人格分析失敗</div>
+<div class="flash-text">ERROR 404 教檢不存在</div>
 </div>
 
 <div class="container">
@@ -59,8 +97,11 @@ border:5px solid red;
 <!-- 遊戲 -->
 
 <div id="p-game" class="page">
+
 <div id="turn">回合 1 / 14</div>
 <button class="btn" onclick="roll()">🎲 擲骰子</button>
+
+<div class="board" id="board"></div>
 
 <div id="event" class="event"></div>
 <div id="choices"></div>
@@ -68,17 +109,17 @@ border:5px solid red;
 <div id="log" class="log"></div>
 </div>
 
-<!-- 狐狸問題 -->
+<!-- 狐狸 -->
 
 <div id="p-comment" class="page">
 <h2>最終審查</h2>
 <p>你是否在雪山上救過狐狸？</p>
 
-<button class="btn" onclick="saveComment('我是那隻狐狸')">我是那隻狐狸</button> <button class="btn" onclick="saveComment('我是醬板鴨')">我不是狐狸，我是醬板鴨</button> <button class="btn" onclick="saveComment('我不知道')">什麼狐狸？</button>
+<button class="btn" onclick="saveComment('我是狐狸')">我是那隻狐狸</button> <button class="btn" onclick="saveComment('我是醬板鴨')">我不是狐狸，我是醬板鴨</button> <button class="btn" onclick="saveComment('我不知道')">我不知道</button>
 
 </div>
 
-<!-- 愚人節 -->
+<!-- 結局 -->
 
 <div id="p-joke" class="page">
 <h1>🤡 愚人節快樂 🤡</h1>
@@ -92,32 +133,37 @@ border:5px solid red;
 
 // ===== 事件 =====
 const tileMap = [
-{n:"家庭陪伴",d:"孩子分享學校生活",c:[
-{n:"專心傾聽",m:0,e:-5,r:20},
-{n:"敷衍回應",m:0,e:5,r:-10}
-]},
-{n:"加班抉擇",d:"主管要求加班",c:[
-{n:"接受加班",m:25,e:-30,r:-15},
-{n:"回家陪伴",m:0,e:5,r:15}
-]},
-{n:"健康檢查",d:"是否進行檢查",c:[
-{n:"完整檢查",m:-20,e:30,r:0},
-{n:"忽略症狀",m:0,e:5,r:0}
-]},
-{n:"學校衝突",d:"孩子與同學衝突",c:[
-{n:"陪伴處理",m:-10,e:-20,r:30},
-{n:"責備孩子",m:0,e:-5,r:-20}
-]},
-{n:"家庭活動",d:"是否安排活動",c:[
-{n:"精心安排",m:-15,e:-10,r:25},
-{n:"在家休息",m:0,e:15,r:-10}
-]}
+"家庭陪伴","加班抉擇","健康檢查","學校衝突",
+"家庭活動","財務壓力","身心疲勞","親子衝突",
+"教育選擇","市場波動","休息時間","社交壓力"
 ];
 
 // ===== 狀態 =====
 let p={day:1,pos:0,m:50,e:50,r:50}
 let name=""
 let finalComment=""
+
+// ===== 初始化地圖 =====
+function renderBoard(){
+const board=document.getElementById('board')
+board.innerHTML=''
+
+tileMap.forEach((t,i)=>{
+const d=document.createElement('div')
+d.className='tile'
+d.id='tile-'+i
+d.innerText=t
+board.appendChild(d)
+})
+
+updateBoard()
+}
+
+function updateBoard(){
+document.querySelectorAll('.tile').forEach(t=>t.classList.remove('active-tile'))
+const now=document.getElementById('tile-'+p.pos)
+if(now) now.classList.add('active-tile')
+}
 
 // ===== 工具 =====
 function show(id){
@@ -132,31 +178,39 @@ logDiv.innerHTML=`<div>${t}</div>`+logDiv.innerHTML
 
 // ===== 開始 =====
 function start(){
-name=document.getElementById('uname').value || "考生"
+name=document.getElementById('uname').value||"考生"
+renderBoard()
 show('p-game')
 }
 
 // ===== 骰子 =====
 function roll(){
-const dice=Math.floor(Math.random()*tileMap.length)
-p.pos=dice
+const dice=Math.floor(Math.random()*3)+1
+p.pos=(p.pos+dice)%tileMap.length
 
+updateBoard()
 log(`🎲 ${name} 擲出 ${dice}`)
 showEvent()
 }
 
-// ===== 顯示事件 =====
+// ===== 事件 =====
 function showEvent(){
-const t=tileMap[p.pos]
-document.getElementById('event').innerHTML=`<b>${t.n}</b><br>${t.d}`
+const text=tileMap[p.pos]
+
+document.getElementById('event').innerHTML=`<b>${text}</b><br>你面臨一個重要選擇`
 
 const cDiv=document.getElementById('choices')
 cDiv.innerHTML=''
 
-t.c.forEach(opt=>{
+const options=[
+{n:"理性決策",m:5,e:-5,r:5},
+{n:"情緒反應",m:0,e:-10,r:-10}
+]
+
+options.forEach(opt=>{
 const b=document.createElement('button')
 b.className="btn"
-b.innerText=`${opt.n} (M${opt.m>=0?'+':''}${opt.m} E${opt.e>=0?'+':''}${opt.e} R${opt.r>=0?'+':''}${opt.r})`
+b.innerText=opt.n
 b.onclick=()=>choose(opt)
 cDiv.appendChild(b)
 })
@@ -172,24 +226,23 @@ log(`變動 M${opt.m} E${opt.e} R${opt.r}`)
 
 p.day++
 
-// 清空選項（避免卡住）
 document.getElementById('choices').innerHTML=''
 document.getElementById('event').innerHTML='👉 請再擲骰子'
 
-if(p.day>10){
+if(p.day>12){
 show('p-comment')
 }else{
 document.getElementById('turn').innerText=`回合 ${p.day} / 14`
 }
 }
 
-// ===== 狐狸答案 =====
+// ===== 狐狸 =====
 function saveComment(c){
 finalComment=c
 playAnimation()
 }
 
-// ===== 愚人節動畫 =====
+// ===== 動畫 =====
 function playAnimation(){
 const pop=document.getElementById('shooting-popup')
 pop.style.display='flex'
@@ -198,9 +251,8 @@ setTimeout(()=>{
 pop.style.display='none'
 
 document.getElementById('result').innerHTML=`
-💀 最終審查 💀<br><br>
+💀 系統最終判定 💀<br><br>
 ${name}<br><br>
-M:${p.m}｜E:${p.e}｜R:${p.r}<br><br>
 你的回答：${finalComment}<br><br>
 👉 你太認真了<br>
 這只是愚人節 🤡
@@ -208,7 +260,7 @@ M:${p.m}｜E:${p.e}｜R:${p.r}<br><br>
 
 show('p-joke')
 
-},2000)
+},2500)
 }
 
 </script>
