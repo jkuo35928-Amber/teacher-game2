@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>家庭教育素養鑑定系統</title>
+
+<style>
+body{font-family:"Microsoft JhengHei";background:#fafafa;margin:0;text-align:center}
+.container{max-width:900px;margin:auto;padding:20px}
+.page{display:none}
+.active{display:block}
+.btn{padding:10px 20px;background:#2c3e50;color:#fff;border:none;margin:10px;cursor:pointer}
+
+.event{border:1px solid #ccc;padding:15px;margin-top:10px}
+.log{height:120px;overflow:auto;border:1px solid #ccc;margin-top:10px;font-size:13px}
+
+#shooting-popup{
+display:none;
+position:fixed;
+top:0;left:0;width:100%;height:100%;
+background:rgba(0,0,0,0.9);
+color:red;
+font-size:60px;
+justify-content:center;
+align-items:center;
+flex-direction:column;
+z-index:999;
+}
+
+#shooting-popup img{
+margin-top:20px;
+width:60%;
+max-width:400px;
+border:5px solid red;
+}
+</style>
+
+</head>
+
+<body>
+
+<div id="shooting-popup">
+💀 噠 噠 噠 噠 💀
+<img src="https://picsum.photos/500/300">
+</div>
+
+<div class="container">
+
+<h1>2026家庭教育專業素養鑑定系統</h1>
+
+<!-- 登入 -->
+
+<div id="p-login" class="page active">
+<input id="uname" placeholder="輸入名字"><br>
+<button class="btn" onclick="start()">開始鑑定</button>
+</div>
+
+<!-- 遊戲 -->
+
+<div id="p-game" class="page">
+<div id="turn">回合 1 / 14</div>
+<button class="btn" onclick="roll()">🎲 擲骰子</button>
+
+<div id="event" class="event"></div>
+<div id="choices"></div>
+
+<div id="log" class="log"></div>
+</div>
+
+<!-- 狐狸問題 -->
+
+<div id="p-comment" class="page">
+<h2>最終審查</h2>
+<p>你是否在雪山上救過狐狸？</p>
+
+<button class="btn" onclick="saveComment('我是那隻狐狸')">我是那隻狐狸</button> <button class="btn" onclick="saveComment('我是醬板鴨')">我不是狐狸，我是醬板鴨</button> <button class="btn" onclick="saveComment('我不知道')">什麼狐狸？</button>
+
+</div>
+
+<!-- 愚人節 -->
+
+<div id="p-joke" class="page">
+<h1>🤡 愚人節快樂 🤡</h1>
+<div id="result"></div>
+<button class="btn" onclick="location.reload()">重新開始</button>
+</div>
+
+</div>
+
+<script>
+
+// ===== 事件 =====
+const tileMap = [
+{n:"家庭陪伴",d:"孩子分享學校生活",c:[
+{n:"專心傾聽",m:0,e:-5,r:20},
+{n:"敷衍回應",m:0,e:5,r:-10}
+]},
+{n:"加班抉擇",d:"主管要求加班",c:[
+{n:"接受加班",m:25,e:-30,r:-15},
+{n:"回家陪伴",m:0,e:5,r:15}
+]},
+{n:"健康檢查",d:"是否進行檢查",c:[
+{n:"完整檢查",m:-20,e:30,r:0},
+{n:"忽略症狀",m:0,e:5,r:0}
+]},
+{n:"學校衝突",d:"孩子與同學衝突",c:[
+{n:"陪伴處理",m:-10,e:-20,r:30},
+{n:"責備孩子",m:0,e:-5,r:-20}
+]},
+{n:"家庭活動",d:"是否安排活動",c:[
+{n:"精心安排",m:-15,e:-10,r:25},
+{n:"在家休息",m:0,e:15,r:-10}
+]}
+];
+
+// ===== 狀態 =====
+let p={day:1,pos:0,m:50,e:50,r:50}
+let name=""
+let finalComment=""
+
+// ===== 工具 =====
+function show(id){
+document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'))
+document.getElementById(id).classList.add('active')
+}
+
+function log(t){
+const logDiv=document.getElementById('log')
+logDiv.innerHTML=`<div>${t}</div>`+logDiv.innerHTML
+}
+
+// ===== 開始 =====
+function start(){
+name=document.getElementById('uname').value || "考生"
+show('p-game')
+}
+
+// ===== 骰子 =====
+function roll(){
+const dice=Math.floor(Math.random()*tileMap.length)
+p.pos=dice
+
+log(`🎲 ${name} 擲出 ${dice}`)
+showEvent()
+}
+
+// ===== 顯示事件 =====
+function showEvent(){
+const t=tileMap[p.pos]
+document.getElementById('event').innerHTML=`<b>${t.n}</b><br>${t.d}`
+
+const cDiv=document.getElementById('choices')
+cDiv.innerHTML=''
+
+t.c.forEach(opt=>{
+const b=document.createElement('button')
+b.className="btn"
+b.innerText=`${opt.n} (M${opt.m>=0?'+':''}${opt.m} E${opt.e>=0?'+':''}${opt.e} R${opt.r>=0?'+':''}${opt.r})`
+b.onclick=()=>choose(opt)
+cDiv.appendChild(b)
+})
+}
+
+// ===== 選擇 =====
+function choose(opt){
+p.m+=opt.m
+p.e+=opt.e
+p.r+=opt.r
+
+log(`變動 M${opt.m} E${opt.e} R${opt.r}`)
+
+p.day++
+
+// 清空選項（避免卡住）
+document.getElementById('choices').innerHTML=''
+document.getElementById('event').innerHTML='👉 請再擲骰子'
+
+if(p.day>10){
+show('p-comment')
+}else{
+document.getElementById('turn').innerText=`回合 ${p.day} / 14`
+}
+}
+
+// ===== 狐狸答案 =====
+function saveComment(c){
+finalComment=c
+playAnimation()
+}
+
+// ===== 愚人節動畫 =====
+function playAnimation(){
+const pop=document.getElementById('shooting-popup')
+pop.style.display='flex'
+
+setTimeout(()=>{
+pop.style.display='none'
+
+document.getElementById('result').innerHTML=`
+💀 最終審查 💀<br><br>
+${name}<br><br>
+M:${p.m}｜E:${p.e}｜R:${p.r}<br><br>
+你的回答：${finalComment}<br><br>
+👉 你太認真了<br>
+這只是愚人節 🤡
+`
+
+show('p-joke')
+
+},2000)
+}
+
+</script>
+
+</body>
+</html>
